@@ -125,3 +125,5 @@ The retrieval process uses the same chunking and top-k flow as before. Instead o
 For answer generation, configure `GROQ_API_KEY` in the Vercel API environment. The API uses the OpenAI-compatible Groq endpoint with `llama-3.3-70b-versatile` by default. Optional overrides are `GROQ_BASE_URL` and `GROQ_MODEL`. Existing DeepSeek deployments remain supported through `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL`; DeepSeek is used automatically when no Groq key is present.
 
 The API now keeps the application available if Postgres is temporarily unavailable during a serverless cold start. `/api/health` still responds so configuration problems are visible, while database-backed upload, chat, and insights requests return their normal error details until the database is reachable.
+
+If the hosted answer provider is unavailable, SmartDoc now returns a deterministic extractive answer from the retrieved document passages instead of failing the request. This keeps document Q&A usable while Groq credentials or connectivity are being corrected.

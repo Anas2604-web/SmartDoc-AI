@@ -86,7 +86,14 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @app.post("/api/ask", response_model=AskResponse)
 async def ask_question(payload: AskRequest):
-    document = fetch_document(payload.document_id)
+    try:
+        document = fetch_document(payload.document_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Failed to load document %s.", payload.document_id)
+        raise HTTPException(status_code=503, detail="The document database is temporarily unavailable.") from exc
+
     if not document:
         raise HTTPException(status_code=404, detail="Document not found. Upload the PDF again.")
 
@@ -102,11 +109,16 @@ async def ask_question(payload: AskRequest):
             top_k=settings.top_k,
         )
         answer = generate_answer(payload.question, sources)
-        log_question(payload.question, pdf_name, len(answer))
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to answer the question.") from exc
+
+    try:
+        log_question(payload.question, pdf_name, len(answer))
+    except Exception:
+        # Analytics must never turn a completed answer into a failed request.
+        logger.exception("Could not log question analytics.")
 
     return AskResponse(
         answer=answer,

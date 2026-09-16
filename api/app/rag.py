@@ -104,9 +104,31 @@ def search_chunks(question: str, chunks: List[str], faiss_index_blob: bytes, top
     return results
 
 
+def _fallback_answer(question: str, sources: List[SourceChunk]) -> str:
+    """Return a useful extractive answer when the hosted model is unavailable."""
+    if not sources:
+        return "I couldn't find relevant text in the uploaded document for that question."
+
+    question_terms = set(_tokens(question))
+    candidates = []
+    for source in sources:
+        sentences = re.split(r"(?<=[.!?])\s+", source.content)
+        for sentence in sentences:
+            sentence_terms = set(_tokens(sentence))
+            overlap = len(question_terms & sentence_terms)
+            if sentence.strip():
+                candidates.append((overlap, source.rank, sentence.strip()))
+
+    candidates.sort(key=lambda item: (-item[0], item[1]))
+    selected = [item[2] for item in candidates[:3]]
+    if not selected:
+        selected = [sources[0].content]
+    return "Based on the uploaded document:\n\n" + " ".join(selected)
+
+
 def generate_answer(question: str, sources: List[SourceChunk]) -> str:
     if not settings.answer_api_key:
-        raise RuntimeError("Set GROQ_API_KEY (recommended) or DEEPSEEK_API_KEY in the API environment.")
+        return _fallback_answer(question, sources)
 
     context = "\n\n".join(
         f"Source {item.rank}:\n{item.content}" for item in sources
@@ -120,15 +142,19 @@ def generate_answer(question: str, sources: List[SourceChunk]) -> str:
         api_key=settings.answer_api_key,
         base_url=settings.answer_base_url,
     )
-    response = client.chat.completions.create(
-        model=settings.answer_model,
-        temperature=0.1,
-        messages=[
-            {"role": "system", "content": prompt},
-            {
-                "role": "user",
-                "content": f"Context:\n{context}\n\nQuestion: {question}",
-            },
-        ],
-    )
-    return (response.choices[0].message.content or "").strip()
+    try:
+        response = client.chat.completions.create(
+            model=settings.answer_model,
+            temperature=0.1,
+            messages=[
+                {"role": "system", "content": prompt},
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {question}",
+                },
+            ],
+        )
+        answer = (response.choices[0].message.content or "").strip()
+        return answer or _fallback_answer(question, sources)
+    except Exception:
+        return _fallback_answer(question, sources)
