@@ -2,8 +2,5 @@ fastapi==0.115.2
 uvicorn==0.30.6
 python-multipart==0.0.9
 pypdf==5.0.1
-numpy==1.26.4
-faiss-cpu==1.8.0.post1
-sentence-transformers==3.2.1
 openai==1.51.2
 psycopg[binary]==3.2.3

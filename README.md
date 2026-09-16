@@ -1,15 +1,16 @@
 # SmartDoc AI
 
-SmartDoc AI is a full-stack document Q&A app built with Vue 3, Vite, Tailwind CSS, and FastAPI. It uses Retrieval-Augmented Generation (RAG) to answer questions from uploaded PDFs, stores document indexes in Postgres-backed persistence for Vercel serverless compatibility, and logs query analytics in Vercel Postgres.
+SmartDoc AI is a full-stack document Q&A app built with Vue 3, Vite, Tailwind CSS, and FastAPI. It uses Retrieval-Augmented Generation (RAG) to answer questions from uploaded PDFs, stores document chunks in Postgres-backed persistence for Vercel serverless compatibility, and logs query analytics in Vercel Postgres.
 
 ## Stack
 
 - Frontend: Vue 3 + Vite + Tailwind CSS
 - Backend: FastAPI
 - LLM: DeepSeek API through the OpenAI Python SDK
-- Embeddings: `sentence-transformers/all-MiniLM-L6-v2`
-- Vector search: FAISS
+- Retrieval: dependency-free sparse TF-IDF cosine similarity
 - Database: Vercel Postgres
+
+The API intentionally avoids PyTorch, sentence-transformers, NumPy, FAISS, and other native ML runtimes. This keeps the Vercel serverless function well below its bundle-size limit while preserving the same upload, retrieval, answer, persistence, and analytics endpoints.
 
 ## Project structure
 
@@ -24,16 +25,13 @@ vercel.json Multi-service Vercel config
 - Upload a PDF file
 - Extract text with `pypdf`
 - Split text into ~500-character chunks with 50-character overlap
-- Generate local embeddings with `all-MiniLM-L6-v2`
-- Store document chunks and serialized FAISS indexes in Postgres
+- Rank chunks with sparse TF-IDF cosine similarity
+- Store document chunks and a compact retrieval marker in Postgres
 - Retrieve top 3 chunks for each question
 - Ask DeepSeek to answer strictly from retrieved context
 - Return grounded answers with source chunks
 - Log question text, timestamp, PDF name, and answer length
-- Show insights for:
-  - most asked questions
-  - total questions asked
-  - questions per day
+- Show insights for most asked questions, total questions asked, and questions per day
 
 ## Environment variables
 
@@ -74,6 +72,8 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 ```
 
+The `faiss_index` column name is retained for database compatibility. New records store a small retrieval-version marker; rankings are recomputed from the persisted chunks on each request, so existing document rows remain readable without FAISS.
+
 ## Local development
 
 ### 1. Start the backend
@@ -84,7 +84,7 @@ Use Python 3.11 if possible.
 cd api
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt --break-system-packages
+pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
@@ -116,8 +116,6 @@ The included `vercel.json` routes all `/api/*` traffic to the FastAPI service an
 - `POST /api/ask`
 - `GET /api/insights`
 
-## Notes
+## Retrieval behavior
 
-- The first embedding request may be slower because the sentence-transformers model needs to initialize.
-- The app stores the serialized FAISS index in Postgres so uploaded PDFs remain queryable across serverless invocations.
-- DeepSeek answers are constrained with the prompt: `Answer only using the provided context. If the answer is not in the context, say so.`
+The retrieval process uses the same chunking and top-k flow as before. Instead of loading a large transformer model at cold start, it tokenizes chunks and the question, computes sparse TF-IDF vectors, and ranks chunks by cosine similarity. This is deterministic, fast for typical uploaded documents, and suitable for Vercel's serverless bundle limit.

@@ -1,15 +1,17 @@
-from functools import lru_cache
+from collections import Counter
 from io import BytesIO
+import math
+import re
 from typing import List
 
-import faiss
-import numpy as np
 from openai import OpenAI
 from pypdf import PdfReader
-from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 from app.schemas import SourceChunk
+
+
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+(?:'[a-z0-9]+)?", re.IGNORECASE)
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -39,51 +41,64 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
     return chunks
 
 
-@lru_cache(maxsize=1)
-def get_embedding_model() -> SentenceTransformer:
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+def _tokens(text: str) -> List[str]:
+    return [token.lower() for token in _TOKEN_PATTERN.findall(text)]
 
 
-def encode_chunks(chunks: List[str]) -> np.ndarray:
-    model = get_embedding_model()
-    embeddings = model.encode(
-        chunks,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-        show_progress_bar=False,
-    )
-    return embeddings.astype("float32")
+def _tf_idf_vector(tokens: List[str], document_frequency: Counter, document_count: int) -> dict[str, float]:
+    counts = Counter(tokens)
+    if not counts:
+        return {}
+    vector = {
+        term: (1.0 + math.log(count)) * (1.0 + math.log((1.0 + document_count) / (1.0 + document_frequency[term])))
+        for term, count in counts.items()
+    }
+    norm = math.sqrt(sum(value * value for value in vector.values()))
+    return {term: value / norm for term, value in vector.items()} if norm else {}
 
 
-def create_faiss_index(embeddings: np.ndarray) -> bytes:
-    dimension = embeddings.shape[1]
-    index = faiss.IndexFlatIP(dimension)
-    index.add(embeddings)
-    return faiss.serialize_index(index).tobytes()
+def encode_chunks(chunks: List[str]) -> List[dict[str, float]]:
+    """Create compact sparse TF-IDF vectors without a model or native ML runtime."""
+    token_lists = [_tokens(chunk) for chunk in chunks]
+    document_frequency: Counter = Counter()
+    for tokens in token_lists:
+        document_frequency.update(set(tokens))
+    return [
+        _tf_idf_vector(tokens, document_frequency, len(chunks))
+        for tokens in token_lists
+    ]
+
+
+def create_faiss_index(embeddings: List[dict[str, float]]) -> bytes:
+    """Keep the historical storage contract; retrieval is recomputed from chunks."""
+    return b"smartdoc-lexical-v1"
 
 
 def search_chunks(question: str, chunks: List[str], faiss_index_blob: bytes, top_k: int) -> List[SourceChunk]:
-    model = get_embedding_model()
-    query_vector = model.encode(
-        [question],
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-        show_progress_bar=False,
-    ).astype("float32")
+    del faiss_index_blob  # Kept in the signature for database and API compatibility.
+    if not chunks:
+        return []
 
-    index_bytes = np.frombuffer(faiss_index_blob, dtype="uint8").copy()
-    index = faiss.deserialize_index(index_bytes)
-    scores, indices = index.search(query_vector, min(top_k, len(chunks)))
+    token_lists = [_tokens(chunk) for chunk in chunks]
+    document_frequency: Counter = Counter()
+    for tokens in token_lists:
+        document_frequency.update(set(tokens))
+    query_vector = _tf_idf_vector(_tokens(question), document_frequency, len(chunks))
 
+    scored = []
+    for index, tokens in enumerate(token_lists):
+        vector = _tf_idf_vector(tokens, document_frequency, len(chunks))
+        score = sum(query_vector.get(term, 0.0) * value for term, value in vector.items())
+        scored.append((score, index))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
     results: List[SourceChunk] = []
-    for rank, (score, chunk_index) in enumerate(zip(scores[0], indices[0]), start=1):
-        if chunk_index < 0:
-            continue
+    for rank, (score, chunk_index) in enumerate(scored[: min(top_k, len(chunks))], start=1):
         results.append(
             SourceChunk(
                 rank=rank,
                 score=float(score),
-                content=chunks[int(chunk_index)],
+                content=chunks[chunk_index],
             )
         )
     return results
