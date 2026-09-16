@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+.env
+.env.*
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/
+.vercel/
+.trae-html-share-packages/
+.screenshots/
