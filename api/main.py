@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import logging
 from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -10,10 +11,17 @@ from app.database import fetch_document, fetch_insights, init_db, log_question, 
 from app.rag import chunk_text, create_faiss_index, encode_chunks, extract_text_from_pdf, generate_answer, search_chunks
 from app.schemas import AskRequest, AskResponse, InsightsResponse, UploadResponse
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db()
+    try:
+        init_db()
+    except Exception:
+        # A transient database issue must not prevent health checks or the
+        # frontend from loading during a serverless cold start.
+        logger.exception("Database initialization failed; database-backed actions may be unavailable.")
     yield
 
 
@@ -33,7 +41,8 @@ async def healthcheck():
     return {
         "status": "ok",
         "postgres_configured": bool(settings.postgres_url),
-        "deepseek_configured": bool(settings.deepseek_api_key),
+        "answer_provider": "groq" if settings.groq_api_key else "deepseek" if settings.deepseek_api_key else None,
+        "answer_api_configured": bool(settings.answer_api_key),
     }
 
 

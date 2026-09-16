@@ -119,3 +119,9 @@ The included `vercel.json` routes all `/api/*` traffic to the FastAPI service an
 ## Retrieval behavior
 
 The retrieval process uses the same chunking and top-k flow as before. Instead of loading a large transformer model at cold start, it tokenizes chunks and the question, computes sparse TF-IDF vectors, and ranks chunks by cosine similarity. This is deterministic, fast for typical uploaded documents, and suitable for Vercel's serverless bundle limit.
+
+### Answer provider configuration
+
+For answer generation, configure `GROQ_API_KEY` in the Vercel API environment. The API uses the OpenAI-compatible Groq endpoint with `llama-3.3-70b-versatile` by default. Optional overrides are `GROQ_BASE_URL` and `GROQ_MODEL`. Existing DeepSeek deployments remain supported through `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL`; DeepSeek is used automatically when no Groq key is present.
+
+The API now keeps the application available if Postgres is temporarily unavailable during a serverless cold start. `/api/health` still responds so configuration problems are visible, while database-backed upload, chat, and insights requests return their normal error details until the database is reachable.

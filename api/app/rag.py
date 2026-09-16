@@ -105,8 +105,8 @@ def search_chunks(question: str, chunks: List[str], faiss_index_blob: bytes, top
 
 
 def generate_answer(question: str, sources: List[SourceChunk]) -> str:
-    if not settings.deepseek_api_key:
-        raise RuntimeError("DEEPSEEK_API_KEY is not configured.")
+    if not settings.answer_api_key:
+        raise RuntimeError("Set GROQ_API_KEY (recommended) or DEEPSEEK_API_KEY in the API environment.")
 
     context = "\n\n".join(
         f"Source {item.rank}:\n{item.content}" for item in sources
@@ -117,11 +117,11 @@ def generate_answer(question: str, sources: List[SourceChunk]) -> str:
     )
 
     client = OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_base_url,
+        api_key=settings.answer_api_key,
+        base_url=settings.answer_base_url,
     )
     response = client.chat.completions.create(
-        model=settings.deepseek_model,
+        model=settings.answer_model,
         temperature=0.1,
         messages=[
             {"role": "system", "content": prompt},
