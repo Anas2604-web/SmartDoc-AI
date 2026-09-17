@@ -38,3 +38,104 @@ button:disabled { cursor: not-allowed; }
 @keyframes spin { to { transform: rotate(360deg); } } @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .55; } 30% { transform: translateY(-4px); opacity: 1; } }
 @media (max-width: 850px) { .workspace-grid { grid-template-columns: 1fr; }.sidebar { grid-template-columns: 1fr 1fr; }.tip-card { grid-column: span 2; }.upload-card { grid-row: span 2; }.welcome-row { align-items: flex-start; flex-direction: column; }.system-status { margin-bottom: 0; } }
 @media (max-width: 620px) { .topbar { height: 66px; padding: 0 17px; }.secure-pill { display: none; }.workspace { width: min(100% - 24px, 1270px); padding-top: 30px; }.sidebar { display: block; }.sidebar-card { margin-bottom: 12px; }.tip-card { display: none; }.welcome-row { margin-bottom: 24px; }.welcome-row h1 { font-size: 30px; }.tabs { gap: 14px; }.chat-header, .messages, .composer-wrap { padding-left: 16px; padding-right: 16px; }.chat-header { align-items: flex-start; flex-direction: column; }.messages { min-height: 390px; }.grounded-pill { align-self: flex-start; }.metric-grid, .insights-columns { grid-template-columns: 1fr; padding-left: 16px; padding-right: 16px; }.metric-grid { gap: 8px; }.metric { padding: 11px; }.insights-card .chat-header { padding-left: 16px; padding-right: 16px; } footer { width: calc(100% - 24px); flex-direction: column; gap: 7px; } }
+
+/* Responsive polish: preserve the desktop composition while making every control
+   comfortable and every panel usable on narrow and short viewports. */
+html { overflow-x: hidden; }
+body { overflow-x: hidden; }
+.topbar, .workspace, footer { max-width: 100%; }
+.chat-header > div:first-child, .welcome-row > div:first-child { min-width: 0; }
+
+@media (max-width: 1100px) {
+  .topbar { padding-left: 28px; padding-right: 28px; }
+  .workspace { width: min(100% - 32px, 1100px); padding-top: 38px; }
+  .workspace-grid { grid-template-columns: 280px minmax(0, 1fr); gap: 18px; }
+  .sidebar-card { padding: 17px; }
+  .chat-header, .messages, .composer-wrap { padding-left: 20px; padding-right: 20px; }
+  .metric-grid, .insights-columns { padding-left: 20px; padding-right: 20px; }
+}
+
+@media (max-width: 850px) {
+  .workspace { padding-top: 34px; }
+  .workspace-grid { grid-template-columns: 1fr; }
+  .sidebar { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 12px; }
+  .upload-card { grid-row: span 2; }
+  .tip-card { grid-column: 1 / -1; }
+  .chat-card, .insights-card { min-width: 0; }
+  .messages { min-height: 360px; }
+}
+
+@media (max-width: 640px) {
+  .topbar { height: 64px; padding: 0 14px; }
+  .brand-lockup { gap: 8px; }
+  .brand-lockup strong { font-size: 16px; }
+  .brand-lockup small { font-size: 9px; }
+  .brand-mark { width: 25px; height: 25px; }
+  .avatar { width: 34px; height: 34px; }
+  .workspace { width: calc(100% - 24px); padding-top: 27px; padding-bottom: 24px; }
+  .welcome-row { gap: 16px; margin-bottom: 22px; }
+  .welcome-row h1 { max-width: 390px; font-size: clamp(28px, 9vw, 35px); }
+  .lede { margin-top: 10px; font-size: 13px; }
+  .system-status { align-self: flex-start; padding: 8px 11px; }
+  .sidebar { display: block; }
+  .sidebar-card { margin-bottom: 12px; }
+  .tip-card { display: flex; }
+  .drop-zone { min-height: 132px; }
+  .primary-button, .ghost-button { min-height: 42px; }
+  .tabs { gap: 14px; margin-bottom: 12px; padding-left: 1px; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar, .suggestions::-webkit-scrollbar { display: none; }
+  .tabs button { min-height: 42px; padding-bottom: 11px; white-space: nowrap; }
+  .chat-header { align-items: flex-start; flex-direction: column; gap: 12px; padding: 18px 16px 16px; }
+  .chat-header h2 { font-size: 17px; }
+  .grounded-pill { align-self: flex-start; }
+  .messages { min-height: 300px; max-height: min(58vh, 520px); padding: 20px 14px; }
+  .empty-state { margin: 34px auto 32px; }
+  .empty-state h3 { font-size: 15px; }
+  .message { gap: 9px; margin-bottom: 22px; }
+  .message-body { max-width: calc(100% - 38px); }
+  .message-meta { flex-wrap: wrap; gap: 4px 7px; }
+  .message-meta span { font-size: 9px; }
+  .message-body > p { font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+  .message.user .message-body > p { max-width: 100%; }
+  .sources { margin-top: 10px; padding: 10px; }
+  .source-item summary { min-height: 36px; align-items: center; }
+  .source-item p { overflow-wrap: anywhere; }
+  .composer-wrap { padding: 13px 14px 16px; }
+  .suggestions { margin-right: -3px; padding-bottom: 2px; }
+  .suggestions button { min-height: 34px; padding: 7px 10px; }
+  .composer { min-height: 48px; padding-left: 12px; }
+  .composer input { font-size: 13px; }
+  .send-button { width: 38px; height: 38px; }
+  .composer-note { line-height: 1.4; }
+  .insights-card .chat-header { padding-left: 16px; padding-right: 16px; }
+  .metric-grid { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+  .metric { min-height: 66px; padding: 12px; }
+  .metric strong { max-width: calc(100vw - 120px); }
+  .insights-columns { grid-template-columns: 1fr; gap: 10px; padding: 0 16px; }
+  .insight-panel { padding: 14px; }
+  .panel-title { align-items: flex-start; flex-direction: column; gap: 4px; }
+  footer { width: calc(100% - 24px); padding-bottom: 20px; line-height: 1.5; }
+}
+
+@media (max-width: 380px) {
+  .topbar-actions { gap: 0; }
+  .welcome-row h1 { font-size: 28px; }
+  .eyebrow { font-size: 9px; letter-spacing: .13em; }
+  .card-heading h2 { font-size: 13px; }
+  .drop-zone { min-height: 120px; }
+  .tabs { gap: 8px; }
+  .tabs button { font-size: 11px; }
+  .messages { padding-left: 11px; padding-right: 11px; }
+  .message-avatar { width: 26px; height: 26px; border-radius: 8px; }
+  .message-body { max-width: calc(100% - 35px); }
+  .message-meta strong { font-size: 10px; }
+  .message-meta span { display: none; }
+}
+
+@media (max-height: 680px) and (max-width: 640px) {
+  .workspace { padding-top: 20px; }
+  .welcome-row { margin-bottom: 16px; }
+  .messages { min-height: 240px; max-height: 42vh; }
+  .empty-state { margin-top: 24px; margin-bottom: 24px; }
+  .empty-orb { width: 44px; height: 44px; margin-bottom: 10px; }
+}
