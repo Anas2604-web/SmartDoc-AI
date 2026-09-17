@@ -127,9 +127,6 @@ def _fallback_answer(question: str, sources: List[SourceChunk]) -> str:
 
 
 def generate_answer(question: str, sources: List[SourceChunk]) -> str:
-    if not settings.answer_api_key:
-        return _fallback_answer(question, sources)
-
     context = "\n\n".join(
         f"Source {item.rank}:\n{item.content}" for item in sources
     )
@@ -138,23 +135,26 @@ def generate_answer(question: str, sources: List[SourceChunk]) -> str:
         "If the answer is not in the context, say so."
     )
 
-    client = OpenAI(
-        api_key=settings.answer_api_key,
-        base_url=settings.answer_base_url,
-    )
-    try:
-        response = client.chat.completions.create(
-            model=settings.answer_model,
-            temperature=0.1,
-            messages=[
-                {"role": "system", "content": prompt},
-                {
-                    "role": "user",
-                    "content": f"Context:\n{context}\n\nQuestion: {question}",
-                },
-            ],
-        )
-        answer = (response.choices[0].message.content or "").strip()
-        return answer or _fallback_answer(question, sources)
-    except Exception:
-        return _fallback_answer(question, sources)
+    for _, api_key, base_url, model in settings.answer_providers:
+        try:
+            client = OpenAI(api_key=api_key, base_url=base_url)
+            response = client.chat.completions.create(
+                model=model,
+                temperature=0.1,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {
+                        "role": "user",
+                        "content": f"Context:\n{context}\n\nQuestion: {question}",
+                    },
+                ],
+            )
+            answer = (response.choices[0].message.content or "").strip()
+            if answer:
+                return answer
+        except Exception:
+            continue
+
+    # This CPU-safe local fallback keeps the app useful without downloading a
+    # large open-source model into the Vercel function bundle.
+    return _fallback_answer(question, sources)

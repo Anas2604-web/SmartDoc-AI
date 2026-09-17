@@ -41,8 +41,9 @@ async def healthcheck():
     return {
         "status": "ok",
         "postgres_configured": bool(settings.postgres_url),
-        "answer_provider": "groq" if settings.groq_api_key else "deepseek" if settings.deepseek_api_key else None,
+        "answer_provider": settings.answer_provider,
         "answer_api_configured": bool(settings.answer_api_key),
+        "backup_provider_configured": bool(settings.groq_api_key),
     }
 
 

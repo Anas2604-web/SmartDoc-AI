@@ -44,6 +44,9 @@ Optional:
 
 - `DEEPSEEK_BASE_URL=https://api.deepseek.com`
 - `DEEPSEEK_MODEL=deepseek-chat`
+- `SMARTDOC_GROQ_API_KEY` (backup)
+- `GROQ_BASE_URL=https://api.groq.com/openai/v1`
+- `GROQ_MODEL=llama-3.3-70b-versatile`
 - `TOP_K=3`
 
 ## Database schema
@@ -103,7 +106,7 @@ The Vite dev server proxies `/api` requests to `http://127.0.0.1:8000`.
 1. Push this repository to GitHub.
 2. Import the repository into Vercel.
 3. Keep the included `vercel.json` file.
-4. Add `DEEPSEEK_API_KEY` and `POSTGRES_URL` in the Vercel project settings.
+4. Add `DEEPSEEK_API_KEY`, `SMARTDOC_GROQ_API_KEY` (backup), and `POSTGRES_URL` in the Vercel project settings.
 5. Create a Vercel Postgres database and copy its connection string into `POSTGRES_URL`.
 6. Deploy.
 
@@ -122,8 +125,8 @@ The retrieval process uses the same chunking and top-k flow as before. Instead o
 
 ### Answer provider configuration
 
-For answer generation, configure `GROQ_API_KEY` in the Vercel API environment. The API uses the OpenAI-compatible Groq endpoint with `llama-3.3-70b-versatile` by default. Optional overrides are `GROQ_BASE_URL` and `GROQ_MODEL`. Existing DeepSeek deployments remain supported through `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL`; DeepSeek is used automatically when no Groq key is present.
+For answer generation, configure `DEEPSEEK_API_KEY` as the primary provider and `SMARTDOC_GROQ_API_KEY` as the backup provider. SmartDoc tries DeepSeek first, then Groq if DeepSeek fails. Optional overrides are `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`, `GROQ_BASE_URL`, and `GROQ_MODEL`.
 
 The API now keeps the application available if Postgres is temporarily unavailable during a serverless cold start. `/api/health` still responds so configuration problems are visible, while database-backed upload, chat, and insights requests return their normal error details until the database is reachable.
 
-If the hosted answer provider is unavailable, SmartDoc now returns a deterministic extractive answer from the retrieved document passages instead of failing the request. This keeps document Q&A usable while Groq credentials or connectivity are being corrected.
+If both hosted answer providers are unavailable, SmartDoc returns a deterministic extractive answer from the retrieved document passages instead of failing the request. This CPU-safe fallback avoids downloading a large open-source model into the Vercel function bundle.
