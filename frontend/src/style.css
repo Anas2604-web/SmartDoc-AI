@@ -139,3 +139,25 @@ body { overflow-x: hidden; }
   .empty-state { margin-top: 24px; margin-bottom: 24px; }
   .empty-orb { width: 44px; height: 44px; margin-bottom: 10px; }
 }
+
+/* Keep the two workspace columns strictly contained when a PDF name or
+   retrieved passage is unusually long. */
+.workspace-grid,
+.workspace-grid > *,
+.sidebar,
+.content-area {
+  min-width: 0;
+}
+
+.sidebar-card,
+.chat-card,
+.insights-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.content-area {
+  position: relative;
+  z-index: 1;
+}
